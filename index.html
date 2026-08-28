@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NMMS 2026-27 | Mayiladuthurai District</title>
+<script src="config.js"></script>
+<style>
+  :root{
+    --navy:#0f2749; --navy-light:#1c3a63; --gold:#c8992f; --bg:#f4f6f9;
+    --card:#ffffff; --text:#1a2433; --muted:#64748b; --green:#1a8a54; --red:#c23a3a;
+    --border:#e2e6ec;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  header h1{font-size:17px;margin:0;font-weight:600;}
+  header .sub{font-size:12px;color:#cfe0f5;}
+  header .userbox{font-size:13px;display:flex;align-items:center;gap:12px;}
+  button{cursor:pointer;font-family:inherit;}
+  .btn{background:var(--navy);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:14px;}
+  .btn:hover{background:var(--navy-light);}
+  .btn.gold{background:var(--gold);color:#2b2000;}
+  .btn.outline{background:transparent;border:1px solid #fff;color:#fff;}
+  .btn.small{padding:5px 10px;font-size:12px;}
+  .btn.danger{background:var(--red);color:#fff;}
+  #app{max-width:1100px;margin:0 auto;padding:20px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;}
+  .login-wrap{display:flex;align-items:center;justify-content:center;min-height:80vh;}
+  .login-card{max-width:380px;width:100%;}
+  .login-card h2{margin-top:0;color:var(--navy);}
+  input,select{width:100%;padding:10px;border:1px solid var(--border);border-radius:6px;font-size:14px;margin-bottom:10px;}
+  label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px;}
+  .error{color:var(--red);font-size:13px;margin-top:6px;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+  th{background:#f0f3f8;color:var(--navy);font-weight:600;position:sticky;top:0;}
+  td input{margin:0;padding:6px;width:70px;}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab{padding:9px 16px;border-radius:6px;background:#e9edf3;color:var(--navy);font-size:14px;border:none;}
+  .tab.active{background:var(--navy);color:#fff;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;}
+  .stat .num{font-size:24px;font-weight:700;color:var(--navy);}
+  .stat .lbl{font-size:12px;color:var(--muted);}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;}
+  .pill.ok{background:#e3f6ea;color:var(--green);}
+  .pill.warn{background:#fdecec;color:var(--red);}
+  .search-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .search-row input,.search-row select{width:auto;flex:1;min-width:160px;margin-bottom:0;}
+  .muted{color:var(--muted);font-size:13px;}
+  .save-msg{font-size:13px;color:var(--green);margin-left:8px;}
+  a.link-item{display:block;padding:10px;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;text-decoration:none;color:var(--navy);}
+  a.link-item:hover{background:#f0f3f8;}
+  .hidden{display:none !important;}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:30px 0;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>NMMS 2026-27 Portal</h1>
+    <div class="sub">Mayiladuthurai District</div>
+  </div>
+  <div class="userbox" id="userbox"></div>
+</header>
+
+<div id="app">
+
+  <!-- LOGIN -->
+  <div class="login-wrap" id="loginView">
+    <div class="card login-card">
+      <h2>Sign in</h2>
+      <label>Username</label>
+      <input id="loginUser" placeholder="School UDISE code or admin ID">
+      <label>Password</label>
+      <input id="loginPass" type="password" placeholder="Password">
+      <button class="btn" style="width:100%" onclick="doLogin()">Sign In</button>
+      <div class="error" id="loginError"></div>
+      <p class="muted" style="margin-top:14px">Teachers: login with your school's UDISE code and the password given by the district office.</p>
+    </div>
+  </div>
+
+  <!-- TEACHER VIEW -->
+  <div class="hidden" id="teacherView">
+    <div class="card">
+      <h2 id="teacherSchoolName"></h2>
+      <div class="tabs">
+        <button class="tab active" id="tabMarksBtn" onclick="showTeacherTab('marks')">Mark Entry</button>
+        <button class="tab" id="tabResBtn" onclick="showTeacherTab('resources')">Resources</button>
+      </div>
+
+      <div id="teacherMarksTab">
+        <div class="search-row">
+          <input id="studentSearch" placeholder="Search student name or roll no..." oninput="renderMarksTable()">
+          <select id="testFilter" onchange="renderMarksTable()"></select>
+        </div>
+        <div style="overflow-x:auto">
+          <table id="marksTable">
+            <thead><tr><th>Roll No</th><th>Student Name</th><th>Test</th><th>MAT</th><th>SAT</th><th>Total</th><th></th></tr></thead>
+            <tbody id="marksTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="teacherResTab" class="hidden">
+        <div id="resList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div class="hidden" id="adminView">
+    <div class="tabs">
+      <button class="tab active" id="admTabDashBtn" onclick="showAdminTab('dash')">District Dashboard</button>
+      <button class="tab" id="admTabSchoolsBtn" onclick="showAdminTab('schools')">Schools</button>
+      <button class="tab" id="admTabResBtn" onclick="showAdminTab('resources')">Resources</button>
+    </div>
+
+    <div id="admDashTab">
+      <div class="card">
+        <h3>Overall</h3>
+        <div class="stat-grid" id="overallStats"></div>
+      </div>
+      <div class="card">
+        <h3>Block-wise Progress</h3>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>Block</th><th>Schools</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
+            <tbody id="blockTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="admSchoolsTab" class="hidden">
+      <div class="card">
+        <div class="search-row">
+          <input id="schoolSearch" placeholder="Search school name..." oninput="renderSchoolsTable()">
+          <select id="blockFilter" onchange="renderSchoolsTable()"><option value="">All Blocks</option></select>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>School</th><th>Block</th><th>Category</th><th>Students</th><th>Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
+            <tbody id="schoolsTbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="admResTab" class="hidden">
+      <div class="card">
+        <h3>Add Resource</h3>
+        <div class="search-row">
+          <select id="newResType">
+            <option value="Previous Year Question">Previous Year Question</option>
+            <option value="Online Exam Link">Online Exam Link</option>
+            <option value="Important Video">Important Video</option>
+            <option value="Other">Other</option>
+          </select>
+          <input id="newResTitle" placeholder="Title">
+        </div>
+        <input id="newResUrl" placeholder="URL (Google Drive link, YouTube link, etc.)">
+        <button class="btn gold" onclick="addResourceAdmin()">Add Resource</button>
+      </div>
+      <div class="card">
+        <h3>All Resources</h3>
+        <div id="adminResList"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>NMMS 2026-27 &middot; Mayiladuthurai District Education Office</footer>
+
+<script>
+let SESSION = null; // {role, username, udise, school, block, category, name}
+let MARKS_CACHE = [];
+let RESOURCES_CACHE = [];
+let ANALYSIS_CACHE = null;
+
+async function api(action, payload) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action }, payload || {}))
+  });
+  return res.json();
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUser').value.trim();
+  const password = document.getElementById('loginPass').value.trim();
+  document.getElementById('loginError').textContent = '';
+  if (!username || !password) { document.getElementById('loginError').textContent = 'Enter username and password.'; return; }
+  try {
+    const res = await api('login', { username, password });
+    if (!res.ok) { document.getElementById('loginError').textContent = res.error || 'Login failed.'; return; }
+    SESSION = res;
+    localStorage.setItem('nmms_session', JSON.stringify(res));
+    afterLogin();
+  } catch (e) {
+    document.getElementById('loginError').textContent = 'Could not reach server. Check API_URL in config.js.';
+  }
+}
+
+function logout() {
+  SESSION = null;
+  localStorage.removeItem('nmms_session');
+  document.getElementById('teacherView').classList.add('hidden');
+  document.getElementById('adminView').classList.add('hidden');
+  document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('userbox').innerHTML = '';
+}
+
+async function afterLogin() {
+  document.getElementById('loginView').classList.add('hidden');
+  const ub = document.getElementById('userbox');
+  if (SESSION.role === 'admin') {
+    ub.innerHTML = `Admin (${SESSION.name || ''}) <button class="btn outline small" onclick="logout()">Log out</button>`;
+    document.getElementById('adminView').classList.remove('hidden');
+    await loadAdmin();
+  } else {
+    ub.innerHTML = `${SESSION.school} <button class="btn outline small" onclick="logout()">Log out</button>`;
+    document.getElementById('teacherView').classList.remove('hidden');
+    document.getElementById('teacherSchoolName').textContent = SESSION.school + ' (' + SESSION.block + ')';
+    await loadTeacher();
+  }
+}
+
+/* ---------- TEACHER ---------- */
+async function loadTeacher() {
+  const res = await api('getMarks', { udise: SESSION.udise });
+  MARKS_CACHE = res.rows || [];
+  const tests = [...new Set(MARKS_CACHE.map(r => r.Test))];
+  const sel = document.getElementById('testFilter');
+  sel.innerHTML = '<option value="">All Tests</option>' + tests.map(t => `<option value="${t}">${t}</option>`).join('');
+  renderMarksTable();
+  const rres = await api('getResources');
+  RESOURCES_CACHE = rres.resources || [];
+  renderResourceList('resList', false);
+}
+
+function showTeacherTab(t) {
+  document.getElementById('tabMarksBtn').classList.toggle('active', t === 'marks');
+  document.getElementById('tabResBtn').classList.toggle('active', t === 'resources');
+  document.getElementById('teacherMarksTab').classList.toggle('hidden', t !== 'marks');
+  document.getElementById('teacherResTab').classList.toggle('hidden', t !== 'resources');
+}
+
+function renderMarksTable() {
+  const q = document.getElementById('studentSearch').value.toLowerCase();
+  const testF = document.getElementById('testFilter').value;
+  const tbody = document.getElementById('marksTbody');
+  tbody.innerHTML = '';
+  MARKS_CACHE
+    .filter(r => (!testF || r.Test === testF))
+    .filter(r => (!q || String(r['Student Name']).toLowerCase().includes(q) || String(r['Roll No']).includes(q)))
+    .forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r['Roll No']}</td>
+        <td>${r['Student Name']}</td>
+        <td>${r.Test}</td>
+        <td><input type="number" value="${r.MAT ?? ''}" id="mat_${r._row}"></td>
+        <td><input type="number" value="${r.SAT ?? ''}" id="sat_${r._row}"></td>
+        <td id="tot_${r._row}">${r.Total ?? ''}</td>
+        <td><button class="btn small" onclick="saveMark(${r._row})">Save</button><span class="save-msg" id="msg_${r._row}"></span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+}
+
+async function saveMark(row) {
+  const mat = document.getElementById('mat_' + row).value;
+  const sat = document.getElementById('sat_' + row).value;
+  const res = await api('updateMark', { row, mat, sat, editor: SESSION.username });
+  if (res.ok) {
+    document.getElementById('tot_' + row).textContent = res.total;
+    const msg = document.getElementById('msg_' + row);
+    msg.textContent = 'Saved ✓';
+    setTimeout(() => msg.textContent = '', 1500);
+  }
+}
+
+function renderResourceList(elId, isAdmin) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  if (RESOURCES_CACHE.length === 0) { el.innerHTML = '<p class="muted">No resources added yet.</p>'; return; }
+  RESOURCES_CACHE.forEach((r, i) => {
+    const div = document.createElement('div');
+    div.innerHTML = `<a class="link-item" href="${r.URL}" target="_blank"><strong>${r.Type}:</strong> ${r.Title}</a>`;
+    if (isAdmin) {
+      const btn = document.createElement('button');
+      btn.className = 'btn danger small';
+      btn.textContent = 'Delete';
+      btn.style.marginBottom = '8px';
+      btn.onclick = () => deleteResourceAdmin(i + 2); // sheet row = index+2 (header row 1)
+      div.appendChild(btn);
+    }
+    el.appendChild(div);
+  });
+}
+
+/* ---------- ADMIN ---------- */
+async function loadAdmin() {
+  const [ares, sres, rres] = await Promise.all([
+    api('getAnalysis', {}),
+    api('getAllSchools', {}),
+    api('getResources', {})
+  ]);
+  ANALYSIS_CACHE = ares;
+  window.SCHOOLS_CACHE = sres.schools || [];
+  RESOURCES_CACHE = rres.resources || [];
+
+  const totalStudents = ares.byBlock.reduce((a, b) => a + b.studentsTotal, 0);
+  const totalFilled = ares.byBlock.reduce((a, b) => a + b.entriesFilled, 0);
+  const totalSchools = window.SCHOOLS_CACHE.length;
+  document.getElementById('overallStats').innerHTML = `
+    <div class="stat"><div class="num">${totalSchools}</div><div class="lbl">Schools</div></div>
+    <div class="stat"><div class="num">${totalStudents}</div><div class="lbl">Total Students</div></div>
+    <div class="stat"><div class="num">${totalFilled}</div><div class="lbl">Mark Entries Filled</div></div>
+    <div class="stat"><div class="num">${totalStudents ? Math.round(totalFilled/ (totalStudents*2) * 100) : 0}%</div><div class="lbl">Overall Completion</div></div>
+  `;
+
+  const btbody = document.getElementById('blockTbody');
+  btbody.innerHTML = '';
+  ares.byBlock.sort((a,b)=>a.block.localeCompare(b.block)).forEach(b => {
+    const pct = b.studentsTotal ? Math.round(b.entriesFilled / (b.studentsTotal*2) * 100) : 0;
+    const pillClass = pct >= 80 ? 'ok' : 'warn';
+    btbody.innerHTML += `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
+  });
+
+  const blockFilter = document.getElementById('blockFilter');
+  const blocks = [...new Set(window.SCHOOLS_CACHE.map(s => s.Block))].sort();
+  blockFilter.innerHTML = '<option value="">All Blocks</option>' + blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+
+  renderSchoolsTable();
+  renderResourceList('adminResList', true);
+}
+
+function showAdminTab(t) {
+  document.getElementById('admTabDashBtn').classList.toggle('active', t === 'dash');
+  document.getElementById('admTabSchoolsBtn').classList.toggle('active', t === 'schools');
+  document.getElementById('admTabResBtn').classList.toggle('active', t === 'resources');
+  document.getElementById('admDashTab').classList.toggle('hidden', t !== 'dash');
+  document.getElementById('admSchoolsTab').classList.toggle('hidden', t !== 'schools');
+  document.getElementById('admResTab').classList.toggle('hidden', t !== 'resources');
+}
+
+function renderSchoolsTable() {
+  const q = document.getElementById('schoolSearch').value.toLowerCase();
+  const blockF = document.getElementById('blockFilter').value;
+  const bySchool = ANALYSIS_CACHE ? ANALYSIS_CACHE.bySchool : [];
+  const tbody = document.getElementById('schoolsTbody');
+  tbody.innerHTML = '';
+  bySchool
+    .filter(s => (!blockF || s.block === blockF))
+    .filter(s => (!q || s.name.toLowerCase().includes(q)))
+    .sort((a,b) => a.name.localeCompare(b.name))
+    .forEach(s => {
+      const pct = s.studentsTotal ? Math.round(s.entriesFilled / (s.studentsTotal*2) * 100) : 0;
+      const pillClass = pct >= 80 ? 'ok' : 'warn';
+      tbody.innerHTML += `<tr><td>${s.name}</td><td>${s.block}</td><td>${s.category}</td><td>${s.studentsTotal}</td><td>${s.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${s.avgMark}</td></tr>`;
+    });
+}
+
+async function addResourceAdmin() {
+  const type = document.getElementById('newResType').value;
+  const title = document.getElementById('newResTitle').value.trim();
+  const url = document.getElementById('newResUrl').value.trim();
+  if (!title || !url) return;
+  await api('addResource', { type, title, url, category: 'All' });
+  document.getElementById('newResTitle').value = '';
+  document.getElementById('newResUrl').value = '';
+  const rres = await api('getResources');
+  RESOURCES_CACHE = rres.resources || [];
+  renderResourceList('adminResList', true);
+}
+
+async function deleteResourceAdmin(row) {
+  await api('deleteResource', { row });
+  const rres = await api('getResources');
+  RESOURCES_CACHE = rres.resources || [];
+  renderResourceList('adminResList', true);
+}
+
+/* ---------- INIT ---------- */
+(function init() {
+  const saved = localStorage.getItem('nmms_session');
+  if (saved) {
+    SESSION = JSON.parse(saved);
+    afterLogin();
+  }
+})();
+</script>
+</body>
+</html>
