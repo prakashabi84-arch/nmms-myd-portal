@@ -125,6 +125,7 @@
         <h3>Overall</h3>
         <div class="stat-grid" id="overallStats"></div>
         <button class="btn gold small" onclick="copyPublicReportLink()">Copy Public Report Link (no login needed)</button>
+        <button class="btn small" onclick="downloadReportCSV()">Download Report (Excel/CSV)</button>
         <span class="save-msg" id="copyLinkMsg"></span>
       </div>
       <div class="card">
@@ -446,6 +447,50 @@ function copyPublicReportLink() {
     setTimeout(() => msg.textContent = '', 4000);
   });
 }
+
+function csvEscape(v) {
+  v = String(v === undefined || v === null ? '' : v);
+  if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+    v = '"' + v.replace(/"/g, '""') + '"';
+  }
+  return v;
+}
+
+function downloadReportCSV() {
+  if (!ANALYSIS_CACHE) return;
+  const testLabel = CURRENT_TEST_FILTER === 'All' ? 'All Tests' : CURRENT_TEST_FILTER;
+  let lines = [];
+
+  lines.push(`NMMS 2026-27 District Report - Mayiladuthurai`);
+  lines.push(`Test: ${testLabel}`);
+  lines.push(`Generated: ${new Date().toLocaleString('en-IN')}`);
+  lines.push('');
+  lines.push('Block-wise Summary');
+  lines.push(['Block','Schools','Total Students','Entries Filled','% Complete','Avg Total'].map(csvEscape).join(','));
+  ANALYSIS_CACHE.byBlock.slice().sort((a,b)=>a.block.localeCompare(b.block)).forEach(b => {
+    const pct = b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*b.maxPerStudent)*100) : 0;
+    lines.push([b.block, b.schoolCount, b.studentsTotal, b.entriesFilled, pct + '%', b.avgMark].map(csvEscape).join(','));
+  });
+  lines.push('');
+  lines.push('School-wise Detail');
+  lines.push(['School','Block','Category','Students','Entries Filled','% Complete','Avg Total'].map(csvEscape).join(','));
+  ANALYSIS_CACHE.bySchool.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(s => {
+    const pct = s.studentsTotal ? Math.round(s.entriesFilled/(s.studentsTotal*s.maxPerStudent)*100) : 0;
+    lines.push([s.name, s.block, s.category, s.studentsTotal, s.entriesFilled, pct + '%', s.avgMark].map(csvEscape).join(','));
+  });
+
+  const csv = lines.join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `NMMS_Report_${testLabel.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 
 function showAdminTab(t) {
   document.getElementById('admTabDashBtn').classList.toggle('active', t === 'dash');
