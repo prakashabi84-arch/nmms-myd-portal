@@ -121,6 +121,7 @@
 
     <div id="admDashTab">
       <div class="card">
+        <div class="tabs" id="dashTestTabs"></div>
         <h3>Overall</h3>
         <div class="stat-grid" id="overallStats"></div>
         <button class="btn gold small" onclick="copyPublicReportLink()">Copy Public Report Link (no login needed)</button>
@@ -338,53 +339,78 @@ function renderResourceList(elId, isAdmin) {
 }
 
 /* ---------- ADMIN ---------- */
+let CURRENT_TEST_FILTER = 'All';
+
 async function loadAdmin() {
-  const [ares, sres, rres] = await Promise.all([
-    api('getAnalysis', {}),
+  // Fetch the test list once to build the tabs, then load "All" by default.
+  const tres0 = await api('getTestList', {});
+  window.ALL_TESTS = tres0.tests || [];
+  renderDashTestTabs();
+
+  const [sres, rres] = await Promise.all([
     api('getAllSchools', {}),
     api('getResources', {})
   ]);
-  ANALYSIS_CACHE = ares;
   window.SCHOOLS_CACHE = sres.schools || [];
   RESOURCES_CACHE = rres.resources || [];
-
-  const totalStudents = ares.byBlock.reduce((a, b) => a + b.studentsTotal, 0);
-  const totalFilled = ares.byBlock.reduce((a, b) => a + b.entriesFilled, 0);
-  const totalSchools = window.SCHOOLS_CACHE.length;
-  document.getElementById('overallStats').innerHTML = `
-    <div class="stat"><div class="num">${totalSchools}</div><div class="lbl">Schools</div></div>
-    <div class="stat"><div class="num">${totalStudents}</div><div class="lbl">Total Students</div></div>
-    <div class="stat"><div class="num">${totalFilled}</div><div class="lbl">Mark Entries Filled</div></div>
-    <div class="stat"><div class="num">${totalStudents ? Math.round(totalFilled/ (totalStudents*2) * 100) : 0}%</div><div class="lbl">Overall Completion</div></div>
-  `;
-
-  const btbody = document.getElementById('blockTbody');
-  btbody.innerHTML = '';
-  ares.byBlock.sort((a,b)=>a.block.localeCompare(b.block)).forEach(b => {
-    const pct = b.studentsTotal ? Math.round(b.entriesFilled / (b.studentsTotal*2) * 100) : 0;
-    const pillClass = pct >= 80 ? 'ok' : 'warn';
-    btbody.innerHTML += `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
-  });
 
   const blockFilter = document.getElementById('blockFilter');
   const blocks = [...new Set(window.SCHOOLS_CACHE.map(s => s.Block))].sort();
   blockFilter.innerHTML = '<option value="">All Blocks</option>' + blocks.map(b => `<option value="${b}">${b}</option>`).join('');
 
-  renderSchoolsTable();
   renderResourceList('adminResList', true);
-  renderCharts(ares.byBlock);
 
-  const tres = await api('getTestList', {});
   const tsel = document.getElementById('topWeakTest');
-  tsel.innerHTML = (tres.tests || []).map(t => `<option value="${t}">${t}</option>`).join('');
-  if (tres.tests && tres.tests.length) loadTopWeak();
+  tsel.innerHTML = window.ALL_TESTS.map(t => `<option value="${t}">${t}</option>`).join('');
+  if (window.ALL_TESTS.length) loadTopWeak();
+
+  await loadDashboardForTest('All');
+}
+
+function renderDashTestTabs() {
+  const el = document.getElementById('dashTestTabs');
+  const opts = ['All', ...window.ALL_TESTS];
+  el.innerHTML = opts.map(t =>
+    `<button class="tab ${t === CURRENT_TEST_FILTER ? 'active' : ''}" onclick="loadDashboardForTest('${t}')">${t === 'All' ? 'All Tests' : t}</button>`
+  ).join('');
+}
+
+async function loadDashboardForTest(testFilter) {
+  CURRENT_TEST_FILTER = testFilter;
+  renderDashTestTabs();
+
+  const ares = await api('getAnalysis', { test: testFilter === 'All' ? '' : testFilter });
+  ANALYSIS_CACHE = ares;
+
+  const totalStudents = ares.byBlock.reduce((a, b) => a + b.studentsTotal, 0);
+  const totalFilled = ares.byBlock.reduce((a, b) => a + b.entriesFilled, 0);
+  const maxPerStudent = ares.byBlock.length ? ares.byBlock[0].maxPerStudent : 1;
+  const totalSchools = window.SCHOOLS_CACHE.length;
+  const totalExpected = totalStudents * maxPerStudent;
+  document.getElementById('overallStats').innerHTML = `
+    <div class="stat"><div class="num">${totalSchools}</div><div class="lbl">Schools</div></div>
+    <div class="stat"><div class="num">${totalStudents}</div><div class="lbl">Total Students</div></div>
+    <div class="stat"><div class="num">${totalFilled}</div><div class="lbl">Mark Entries Filled</div></div>
+    <div class="stat"><div class="num">${totalExpected ? Math.round(totalFilled/totalExpected*100) : 0}%</div><div class="lbl">Completion &mdash; ${testFilter === 'All' ? 'All Tests' : testFilter}</div></div>
+  `;
+
+  const btbody = document.getElementById('blockTbody');
+  btbody.innerHTML = '';
+  ares.byBlock.sort((a,b)=>a.block.localeCompare(b.block)).forEach(b => {
+    const pct = b.studentsTotal ? Math.round(b.entriesFilled / (b.studentsTotal*b.maxPerStudent) * 100) : 0;
+    const pillClass = pct >= 80 ? 'ok' : 'warn';
+    btbody.innerHTML += `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
+  });
+
+  renderSchoolsTable();
+  renderCharts(ares.byBlock);
 }
 
 let completionChartObj = null, avgMarksChartObj = null;
 function renderCharts(byBlock) {
   const sorted = [...byBlock].sort((a,b) => a.block.localeCompare(b.block));
   const labels = sorted.map(b => b.block);
-  const completion = sorted.map(b => b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*2)*100) : 0);
+  const completion = sorted.map(b => b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*b.maxPerStudent)*100) : 0);
   const avg = sorted.map(b => b.avgMark);
 
   if (completionChartObj) completionChartObj.destroy();
@@ -441,7 +467,7 @@ function renderSchoolsTable() {
     .filter(s => (!q || s.name.toLowerCase().includes(q)))
     .sort((a,b) => a.name.localeCompare(b.name))
     .forEach(s => {
-      const pct = s.studentsTotal ? Math.round(s.entriesFilled / (s.studentsTotal*2) * 100) : 0;
+      const pct = s.studentsTotal ? Math.round(s.entriesFilled / (s.studentsTotal*s.maxPerStudent) * 100) : 0;
       const pillClass = pct >= 80 ? 'ok' : 'warn';
       tbody.innerHTML += `<tr><td>${s.name}</td><td>${s.block}</td><td>${s.category}</td><td>${s.studentsTotal}</td><td>${s.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${s.avgMark}</td></tr>`;
     });
