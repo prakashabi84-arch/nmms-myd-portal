@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NMMS 2026-27 | Mayiladuthurai District</title>
 <script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
   :root{
     --navy:#0f2749; --navy-light:#1c3a63; --gold:#c8992f; --bg:#f4f6f9;
@@ -122,6 +123,8 @@
       <div class="card">
         <h3>Overall</h3>
         <div class="stat-grid" id="overallStats"></div>
+        <button class="btn gold small" onclick="copyPublicReportLink()">Copy Public Report Link (no login needed)</button>
+        <span class="save-msg" id="copyLinkMsg"></span>
       </div>
       <div class="card">
         <h3>Block-wise Progress</h3>
@@ -130,6 +133,36 @@
             <thead><tr><th>Block</th><th>Schools</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
             <tbody id="blockTbody"></tbody>
           </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Block-wise Completion %</h3>
+        <canvas id="completionChart" height="90"></canvas>
+      </div>
+      <div class="card">
+        <h3>Block-wise Average Marks</h3>
+        <canvas id="avgMarksChart" height="90"></canvas>
+      </div>
+      <div class="card">
+        <h3>Top &amp; Weak Performers</h3>
+        <div class="search-row">
+          <select id="topWeakTest" onchange="loadTopWeak()"></select>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:280px">
+            <h4 style="color:var(--green);margin-bottom:6px">Top 10</h4>
+            <table>
+              <thead><tr><th>Name</th><th>School</th><th>Total</th></tr></thead>
+              <tbody id="topTbody"></tbody>
+            </table>
+          </div>
+          <div style="flex:1;min-width:280px">
+            <h4 style="color:var(--red);margin-bottom:6px">Needs Attention (Bottom 10)</h4>
+            <table>
+              <thead><tr><th>Name</th><th>School</th><th>Total</th></tr></thead>
+              <tbody id="weakTbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -339,6 +372,53 @@ async function loadAdmin() {
 
   renderSchoolsTable();
   renderResourceList('adminResList', true);
+  renderCharts(ares.byBlock);
+
+  const tres = await api('getTestList', {});
+  const tsel = document.getElementById('topWeakTest');
+  tsel.innerHTML = (tres.tests || []).map(t => `<option value="${t}">${t}</option>`).join('');
+  if (tres.tests && tres.tests.length) loadTopWeak();
+}
+
+let completionChartObj = null, avgMarksChartObj = null;
+function renderCharts(byBlock) {
+  const sorted = [...byBlock].sort((a,b) => a.block.localeCompare(b.block));
+  const labels = sorted.map(b => b.block);
+  const completion = sorted.map(b => b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*2)*100) : 0);
+  const avg = sorted.map(b => b.avgMark);
+
+  if (completionChartObj) completionChartObj.destroy();
+  completionChartObj = new Chart(document.getElementById('completionChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: '% Complete', data: completion, backgroundColor: '#0f2749' }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+  });
+
+  if (avgMarksChartObj) avgMarksChartObj.destroy();
+  avgMarksChartObj = new Chart(document.getElementById('avgMarksChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Avg Total Marks', data: avg, backgroundColor: '#c8992f' }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+}
+
+async function loadTopWeak() {
+  const test = document.getElementById('topWeakTest').value;
+  if (!test) return;
+  const res = await api('getTopWeak', { test });
+  const topT = document.getElementById('topTbody');
+  const weakT = document.getElementById('weakTbody');
+  topT.innerHTML = (res.top || []).map(s => `<tr><td>${s.name}</td><td>${s.school}</td><td>${s.total}</td></tr>`).join('');
+  weakT.innerHTML = (res.weak || []).map(s => `<tr><td>${s.name}</td><td>${s.school}</td><td>${s.total}</td></tr>`).join('');
+}
+
+function copyPublicReportLink() {
+  const url = window.location.origin + window.location.pathname.replace('index.html','') + 'report.html';
+  navigator.clipboard.writeText(url).then(() => {
+    const msg = document.getElementById('copyLinkMsg');
+    msg.textContent = 'Link copied: ' + url;
+    setTimeout(() => msg.textContent = '', 4000);
+  });
 }
 
 function showAdminTab(t) {
