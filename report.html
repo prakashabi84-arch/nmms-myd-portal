@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NMMS 2026-27 | District Report | Mayiladuthurai</title>
+<script src="config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0f2749; --navy-light:#1c3a63; --gold:#c8992f; --bg:#f4f6f9;
+    --card:#ffffff; --text:#1a2433; --muted:#64748b; --green:#1a8a54; --red:#c23a3a;
+    --border:#e2e6ec;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;padding:20px 24px;}
+  header h1{font-size:19px;margin:0;font-weight:600;}
+  header .sub{font-size:13px;color:#cfe0f5;margin-top:4px;}
+  #app{max-width:1000px;margin:0 auto;padding:20px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;}
+  th{background:#f0f3f8;color:var(--navy);font-weight:600;}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px;}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;}
+  .stat .num{font-size:26px;font-weight:700;color:var(--navy);}
+  .stat .lbl{font-size:12px;color:var(--muted);}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;}
+  .pill.ok{background:#e3f6ea;color:var(--green);}
+  .pill.warn{background:#fdecec;color:var(--red);}
+  .muted{color:var(--muted);font-size:12px;}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:30px 0;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NMMS 2026-27 &mdash; District Progress Report</h1>
+  <div class="sub">Mayiladuthurai District &middot; Read-only summary, no login required</div>
+</header>
+
+<div id="app">
+  <div class="card">
+    <h3>Overall</h3>
+    <div class="stat-grid" id="overallStats"></div>
+    <p class="muted" id="genTime"></p>
+  </div>
+
+  <div class="card">
+    <h3>Block-wise Progress</h3>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Block</th><th>Schools</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
+        <tbody id="blockTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Block-wise Completion %</h3>
+    <canvas id="completionChart" height="90"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>Block-wise Average Marks</h3>
+    <canvas id="avgMarksChart" height="90"></canvas>
+  </div>
+
+  <div class="card">
+    <h3>School-wise Detail</h3>
+    <div class="search-row" style="margin-bottom:10px">
+      <input id="schoolSearch" placeholder="Search school..." oninput="renderSchools()" style="padding:8px;border:1px solid var(--border);border-radius:6px;width:100%;max-width:300px">
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>School</th><th>Block</th><th>Students</th><th>Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
+        <tbody id="schoolsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>NMMS 2026-27 &middot; Mayiladuthurai District Education Office</footer>
+
+<script>
+let SCHOOLS = [];
+
+async function api(action, payload) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action }, payload || {}))
+  });
+  return res.json();
+}
+
+function renderSchools() {
+  const q = document.getElementById('schoolSearch').value.toLowerCase();
+  const tbody = document.getElementById('schoolsTbody');
+  tbody.innerHTML = '';
+  SCHOOLS
+    .filter(s => !q || s.name.toLowerCase().includes(q))
+    .sort((a,b) => a.name.localeCompare(b.name))
+    .forEach(s => {
+      const pct = s.studentsTotal ? Math.round(s.entriesFilled / (s.studentsTotal*2) * 100) : 0;
+      const pillClass = pct >= 80 ? 'ok' : 'warn';
+      tbody.innerHTML += `<tr><td>${s.name}</td><td>${s.block}</td><td>${s.studentsTotal}</td><td>${s.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${s.avgMark}</td></tr>`;
+    });
+}
+
+async function load() {
+  const res = await api('getPublicReport', {});
+  if (!res.ok) { document.getElementById('app').innerHTML = '<div class="card">Could not load report.</div>'; return; }
+
+  SCHOOLS = res.bySchool || [];
+  const totalStudents = res.byBlock.reduce((a,b) => a + b.studentsTotal, 0);
+  const totalFilled = res.byBlock.reduce((a,b) => a + b.entriesFilled, 0);
+
+  document.getElementById('overallStats').innerHTML = `
+    <div class="stat"><div class="num">${res.totalSchools}</div><div class="lbl">Schools</div></div>
+    <div class="stat"><div class="num">${totalStudents}</div><div class="lbl">Total Students</div></div>
+    <div class="stat"><div class="num">${totalFilled}</div><div class="lbl">Mark Entries Filled</div></div>
+    <div class="stat"><div class="num">${totalStudents ? Math.round(totalFilled/(totalStudents*2)*100) : 0}%</div><div class="lbl">Overall Completion</div></div>
+  `;
+  document.getElementById('genTime').textContent = 'Generated: ' + new Date(res.generatedAt).toLocaleString('en-IN');
+
+  const btbody = document.getElementById('blockTbody');
+  const sorted = [...res.byBlock].sort((a,b) => a.block.localeCompare(b.block));
+  btbody.innerHTML = sorted.map(b => {
+    const pct = b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*2)*100) : 0;
+    const pillClass = pct >= 80 ? 'ok' : 'warn';
+    return `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
+  }).join('');
+
+  const labels = sorted.map(b => b.block);
+  const completion = sorted.map(b => b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*2)*100) : 0);
+  const avg = sorted.map(b => b.avgMark);
+
+  new Chart(document.getElementById('completionChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: '% Complete', data: completion, backgroundColor: '#0f2749' }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+  });
+  new Chart(document.getElementById('avgMarksChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Avg Total Marks', data: avg, backgroundColor: '#c8992f' }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  renderSchools();
+}
+
+load();
+</script>
+</body>
+</html>
