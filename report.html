@@ -30,6 +30,9 @@
   .pill.ok{background:#e3f6ea;color:var(--green);}
   .pill.warn{background:#fdecec;color:var(--red);}
   .muted{color:var(--muted);font-size:12px;}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;}
+  .tab{padding:8px 14px;border-radius:6px;background:#e9edf3;color:var(--navy);font-size:13px;border:none;cursor:pointer;}
+  .tab.active{background:var(--navy);color:#fff;}
   footer{text-align:center;color:var(--muted);font-size:12px;padding:30px 0;}
 </style>
 </head>
@@ -42,6 +45,7 @@
 
 <div id="app">
   <div class="card">
+    <div class="tabs" id="testTabs" style="margin-bottom:14px"></div>
     <h3>Overall</h3>
     <div class="stat-grid" id="overallStats"></div>
     <p class="muted" id="genTime"></p>
@@ -103,46 +107,71 @@ function renderSchools() {
     .filter(s => !q || s.name.toLowerCase().includes(q))
     .sort((a,b) => a.name.localeCompare(b.name))
     .forEach(s => {
-      const pct = s.studentsTotal ? Math.round(s.entriesFilled / (s.studentsTotal*2) * 100) : 0;
+      const pct = s.studentsTotal ? Math.round(s.entriesFilled / (s.studentsTotal*s.maxPerStudent) * 100) : 0;
       const pillClass = pct >= 80 ? 'ok' : 'warn';
       tbody.innerHTML += `<tr><td>${s.name}</td><td>${s.block}</td><td>${s.studentsTotal}</td><td>${s.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${s.avgMark}</td></tr>`;
     });
 }
 
-async function load() {
-  const res = await api('getPublicReport', {});
+let ALL_TESTS = [];
+let CURRENT_TEST_FILTER = 'All';
+let completionChartObj = null, avgMarksChartObj = null;
+
+function renderTestTabs() {
+  const el = document.getElementById('testTabs');
+  const opts = ['All', ...ALL_TESTS];
+  el.innerHTML = opts.map(t =>
+    `<button class="tab ${t === CURRENT_TEST_FILTER ? 'active' : ''}" onclick="load('${t}')">${t === 'All' ? 'All Tests' : t}</button>`
+  ).join('');
+}
+
+async function load(testFilter) {
+  testFilter = testFilter || 'All';
+  CURRENT_TEST_FILTER = testFilter;
+
+  if (ALL_TESTS.length === 0) {
+    const tres = await api('getTestList', {});
+    ALL_TESTS = tres.tests || [];
+  }
+  renderTestTabs();
+
+  const res = await api('getPublicReport', { test: testFilter === 'All' ? '' : testFilter });
   if (!res.ok) { document.getElementById('app').innerHTML = '<div class="card">Could not load report.</div>'; return; }
 
   SCHOOLS = res.bySchool || [];
   const totalStudents = res.byBlock.reduce((a,b) => a + b.studentsTotal, 0);
   const totalFilled = res.byBlock.reduce((a,b) => a + b.entriesFilled, 0);
+  const maxPerStudent = res.byBlock.length ? res.byBlock[0].maxPerStudent : 1;
+  const totalExpected = totalStudents * maxPerStudent;
 
   document.getElementById('overallStats').innerHTML = `
     <div class="stat"><div class="num">${res.totalSchools}</div><div class="lbl">Schools</div></div>
     <div class="stat"><div class="num">${totalStudents}</div><div class="lbl">Total Students</div></div>
     <div class="stat"><div class="num">${totalFilled}</div><div class="lbl">Mark Entries Filled</div></div>
-    <div class="stat"><div class="num">${totalStudents ? Math.round(totalFilled/(totalStudents*2)*100) : 0}%</div><div class="lbl">Overall Completion</div></div>
+    <div class="stat"><div class="num">${totalExpected ? Math.round(totalFilled/totalExpected*100) : 0}%</div><div class="lbl">Completion &mdash; ${testFilter === 'All' ? 'All Tests' : testFilter}</div></div>
   `;
   document.getElementById('genTime').textContent = 'Generated: ' + new Date(res.generatedAt).toLocaleString('en-IN');
 
   const btbody = document.getElementById('blockTbody');
   const sorted = [...res.byBlock].sort((a,b) => a.block.localeCompare(b.block));
   btbody.innerHTML = sorted.map(b => {
-    const pct = b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*2)*100) : 0;
+    const pct = b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*b.maxPerStudent)*100) : 0;
     const pillClass = pct >= 80 ? 'ok' : 'warn';
     return `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
   }).join('');
 
   const labels = sorted.map(b => b.block);
-  const completion = sorted.map(b => b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*2)*100) : 0);
+  const completion = sorted.map(b => b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*b.maxPerStudent)*100) : 0);
   const avg = sorted.map(b => b.avgMark);
 
-  new Chart(document.getElementById('completionChart'), {
+  if (completionChartObj) completionChartObj.destroy();
+  completionChartObj = new Chart(document.getElementById('completionChart'), {
     type: 'bar',
     data: { labels, datasets: [{ label: '% Complete', data: completion, backgroundColor: '#0f2749' }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
   });
-  new Chart(document.getElementById('avgMarksChart'), {
+  if (avgMarksChartObj) avgMarksChartObj.destroy();
+  avgMarksChartObj = new Chart(document.getElementById('avgMarksChart'), {
     type: 'bar',
     data: { labels, datasets: [{ label: 'Avg Total Marks', data: avg, backgroundColor: '#c8992f' }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
@@ -151,7 +180,7 @@ async function load() {
   renderSchools();
 }
 
-load();
+load('All');
 </script>
 </body>
 </html>
