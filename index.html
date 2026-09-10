@@ -188,13 +188,17 @@
       <div class="card">
         <h3>Add Resource</h3>
         <div class="search-row">
-          <select id="newResType">
+          <select id="newResType" onchange="toggleCustomResType()">
             <option value="Previous Year Question">Previous Year Question</option>
             <option value="Online Exam Link">Online Exam Link</option>
             <option value="Important Video">Important Video</option>
+            <option value="2026 Unit Test">2026 Unit Test</option>
+            <option value="2026 Monthly Test">2026 Monthly Test</option>
+            <option value="__custom__">Custom (type your own)…</option>
             <option value="Other">Other</option>
           </select>
-          <input id="newResTitle" placeholder="Title">
+          <input id="newResTypeCustom" class="hidden" placeholder="Type name (e.g. 2026 Quarterly Test)">
+          <input id="newResTitle" placeholder="Title (e.g. Sirkali Block Unit Test 1)">
         </div>
         <input id="newResUrl" placeholder="URL (Google Drive link, YouTube link, etc.)">
         <button class="btn gold" onclick="addResourceAdmin()">Add Resource</button>
@@ -518,14 +522,24 @@ function renderSchoolsTable() {
     });
 }
 
+function toggleCustomResType() {
+  const isCustom = document.getElementById('newResType').value === '__custom__';
+  document.getElementById('newResTypeCustom').classList.toggle('hidden', !isCustom);
+}
+
 async function addResourceAdmin() {
-  const type = document.getElementById('newResType').value;
+  let type = document.getElementById('newResType').value;
+  if (type === '__custom__') type = document.getElementById('newResTypeCustom').value.trim();
   const title = document.getElementById('newResTitle').value.trim();
   const url = document.getElementById('newResUrl').value.trim();
-  if (!title || !url) return;
+  if (!type) { alert('Choose a type, or type your own.'); return; }
+  if (!title || !url) { alert('Enter both a Title and a URL.'); return; }
   await api('addResource', { type, title, url, category: 'All' });
   document.getElementById('newResTitle').value = '';
   document.getElementById('newResUrl').value = '';
+  document.getElementById('newResTypeCustom').value = '';
+  document.getElementById('newResType').value = 'Previous Year Question';
+  toggleCustomResType();
   const rres = await api('getResources');
   RESOURCES_CACHE = rres.resources || [];
   renderResourceList('adminResList', true);
