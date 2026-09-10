@@ -132,7 +132,7 @@
         <h3>Block-wise Progress</h3>
         <div style="overflow-x:auto">
           <table>
-            <thead><tr><th>Block</th><th>Schools</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
+            <thead><tr><th>Block</th><th>Schools (entered / total)</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
             <tbody id="blockTbody"></tbody>
           </table>
         </div>
@@ -399,12 +399,19 @@ async function loadDashboardForTest(testFilter) {
     <div class="stat"><div class="num">${totalExpected ? Math.round(totalFilled/totalExpected*100) : 0}%</div><div class="lbl">Completion &mdash; ${testFilter === 'All' ? 'All Tests' : testFilter}</div></div>
   `;
 
+  const startedByBlock = {};
+  (ares.bySchool || []).forEach(s => {
+    if (startedByBlock[s.block] === undefined) startedByBlock[s.block] = 0;
+    if (s.entriesFilled > 0) startedByBlock[s.block] += 1;
+  });
+
   const btbody = document.getElementById('blockTbody');
   btbody.innerHTML = '';
   ares.byBlock.sort((a,b)=>a.block.localeCompare(b.block)).forEach(b => {
     const pct = b.studentsTotal ? Math.round(b.entriesFilled / (b.studentsTotal*b.maxPerStudent) * 100) : 0;
     const pillClass = pct >= 80 ? 'ok' : 'warn';
-    btbody.innerHTML += `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
+    const started = startedByBlock[b.block] || 0;
+    btbody.innerHTML += `<tr><td>${b.block}</td><td>${started} / ${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
   });
 
   renderSchoolsTable();

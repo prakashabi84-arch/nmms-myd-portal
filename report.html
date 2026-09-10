@@ -55,7 +55,7 @@
     <h3>Block-wise Progress</h3>
     <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>Block</th><th>Schools</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
+        <thead><tr><th>Block</th><th>Schools (entered / total)</th><th>Total Students</th><th>Entries Filled</th><th>% Complete</th><th>Avg Total</th></tr></thead>
         <tbody id="blockTbody"></tbody>
       </table>
     </div>
@@ -154,10 +154,16 @@ async function load(testFilter) {
 
   const btbody = document.getElementById('blockTbody');
   const sorted = [...res.byBlock].sort((a,b) => a.block.localeCompare(b.block));
+  const startedByBlock = {};
+  (res.bySchool || []).forEach(s => {
+    if (startedByBlock[s.block] === undefined) startedByBlock[s.block] = 0;
+    if (s.entriesFilled > 0) startedByBlock[s.block] += 1;
+  });
   btbody.innerHTML = sorted.map(b => {
     const pct = b.studentsTotal ? Math.round(b.entriesFilled/(b.studentsTotal*b.maxPerStudent)*100) : 0;
     const pillClass = pct >= 80 ? 'ok' : 'warn';
-    return `<tr><td>${b.block}</td><td>${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
+    const started = startedByBlock[b.block] || 0;
+    return `<tr><td>${b.block}</td><td>${started} / ${b.schoolCount}</td><td>${b.studentsTotal}</td><td>${b.entriesFilled}</td><td><span class="pill ${pillClass}">${pct}%</span></td><td>${b.avgMark}</td></tr>`;
   }).join('');
 
   const labels = sorted.map(b => b.block);
