@@ -90,6 +90,8 @@
       <div class="tabs">
         <button class="tab active" id="tabMarksBtn" onclick="showTeacherTab('marks')">Mark Entry</button>
         <button class="tab" id="tabResBtn" onclick="showTeacherTab('resources')">NMMS Questions</button>
+        <button class="tab" id="tabTrustBtn" onclick="showTeacherTab('trust')">TRUST</button>
+        <button class="tab" id="tabTncmtseBtn" onclick="showTeacherTab('tncmtse')">TNCMTSE</button>
       </div>
 
       <div id="teacherMarksTab">
@@ -107,6 +109,14 @@
 
       <div id="teacherResTab" class="hidden">
         <div id="resList"></div>
+      </div>
+
+      <div id="teacherTrustTab" class="hidden">
+        <div id="trustList"></div>
+      </div>
+
+      <div id="teacherTncmtseTab" class="hidden">
+        <div id="tncmtseList"></div>
       </div>
     </div>
   </div>
@@ -281,14 +291,20 @@ async function loadTeacher() {
   renderMarksTable();
   const rres = await api('getResources');
   RESOURCES_CACHE = rres.resources || [];
-  renderResourceList('resList', false);
+  renderResourceList('resList', false, r => r.Type !== 'TRUST Questions' && r.Type !== 'TNCMTSE Questions');
+  renderResourceList('trustList', false, r => r.Type === 'TRUST Questions');
+  renderResourceList('tncmtseList', false, r => r.Type === 'TNCMTSE Questions');
 }
 
 function showTeacherTab(t) {
   document.getElementById('tabMarksBtn').classList.toggle('active', t === 'marks');
   document.getElementById('tabResBtn').classList.toggle('active', t === 'resources');
+  document.getElementById('tabTrustBtn').classList.toggle('active', t === 'trust');
+  document.getElementById('tabTncmtseBtn').classList.toggle('active', t === 'tncmtse');
   document.getElementById('teacherMarksTab').classList.toggle('hidden', t !== 'marks');
   document.getElementById('teacherResTab').classList.toggle('hidden', t !== 'resources');
+  document.getElementById('teacherTrustTab').classList.toggle('hidden', t !== 'trust');
+  document.getElementById('teacherTncmtseTab').classList.toggle('hidden', t !== 'tncmtse');
 }
 
 function renderMarksTable() {
@@ -326,11 +342,16 @@ async function saveMark(row) {
   }
 }
 
-function renderResourceList(elId, isAdmin) {
+function renderResourceList(elId, isAdmin, filterFn) {
   const el = document.getElementById(elId);
   el.innerHTML = '';
-  if (RESOURCES_CACHE.length === 0) { el.innerHTML = '<p class="muted">No questions added yet.</p>'; return; }
-  RESOURCES_CACHE.forEach((r, i) => {
+  // keep each item's original RESOURCES_CACHE index (i) so Delete still maps to the right sheet row,
+  // even though we may only be showing a filtered subset (e.g. just the TRUST or TNCMTSE questions).
+  const items = RESOURCES_CACHE
+    .map((r, i) => ({ r, i }))
+    .filter(x => !filterFn || filterFn(x.r));
+  if (items.length === 0) { el.innerHTML = '<p class="muted">No questions added yet.</p>'; return; }
+  items.forEach(({ r, i }) => {
     const div = document.createElement('div');
     div.innerHTML = `<a class="link-item" href="${r.URL}" target="_blank"><strong>${r.Type}:</strong> ${r.Title}</a>`;
     if (isAdmin) {
