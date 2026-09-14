@@ -40,6 +40,12 @@
   .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
   .tab{padding:9px 16px;border-radius:6px;background:#e9edf3;color:var(--navy);font-size:14px;border:none;}
   .tab.active{background:var(--navy);color:#fff;}
+  .tab.nmms{background:#f7ecd2;color:#8a6a12;}
+  .tab.nmms.active{background:var(--gold);color:#2b2000;}
+  .tab.trust{background:#dcf3e4;color:#186b41;}
+  .tab.trust.active{background:var(--green);color:#fff;}
+  .tab.tncmtse{background:#e2e7fb;color:#33409e;}
+  .tab.tncmtse.active{background:#33409e;color:#fff;}
   .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}
   .stat{background:#fff;border:1px solid var(--border);border-radius:8px;padding:14px;}
   .stat .num{font-size:24px;font-weight:700;color:var(--navy);}
@@ -89,9 +95,9 @@
       <h2 id="teacherSchoolName"></h2>
       <div class="tabs">
         <button class="tab active" id="tabMarksBtn" onclick="showTeacherTab('marks')">Mark Entry</button>
-        <button class="tab" id="tabResBtn" onclick="showTeacherTab('resources')">NMMS Questions</button>
-        <button class="tab" id="tabTrustBtn" onclick="showTeacherTab('trust')">TRUST</button>
-        <button class="tab" id="tabTncmtseBtn" onclick="showTeacherTab('tncmtse')">TNCMTSE</button>
+        <button class="tab nmms" id="tabResBtn" onclick="showTeacherTab('resources')">NMMS Questions</button>
+        <button class="tab trust" id="tabTrustBtn" onclick="showTeacherTab('trust')">TRUST</button>
+        <button class="tab tncmtse" id="tabTncmtseBtn" onclick="showTeacherTab('tncmtse')">TNCMTSE</button>
       </div>
 
       <div id="teacherMarksTab">
