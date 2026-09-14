@@ -89,7 +89,7 @@
       <h2 id="teacherSchoolName"></h2>
       <div class="tabs">
         <button class="tab active" id="tabMarksBtn" onclick="showTeacherTab('marks')">Mark Entry</button>
-        <button class="tab" id="tabResBtn" onclick="showTeacherTab('resources')">Resources</button>
+        <button class="tab" id="tabResBtn" onclick="showTeacherTab('resources')">NMMS Questions</button>
       </div>
 
       <div id="teacherMarksTab">
@@ -116,7 +116,7 @@
     <div class="tabs">
       <button class="tab active" id="admTabDashBtn" onclick="showAdminTab('dash')">District Dashboard</button>
       <button class="tab" id="admTabSchoolsBtn" onclick="showAdminTab('schools')">Schools</button>
-      <button class="tab" id="admTabResBtn" onclick="showAdminTab('resources')">Resources</button>
+      <button class="tab" id="admTabResBtn" onclick="showAdminTab('resources')">NMMS Questions</button>
     </div>
 
     <div id="admDashTab">
@@ -186,10 +186,12 @@
 
     <div id="admResTab" class="hidden">
       <div class="card">
-        <h3>Add Resource</h3>
+        <h3>Add NMMS Question</h3>
         <div class="search-row">
           <select id="newResType" onchange="toggleCustomResType()">
             <option value="Previous Year Question">Previous Year Question</option>
+            <option value="TRUST Questions">TRUST Questions</option>
+            <option value="TNCMTSE Questions">TNCMTSE Questions</option>
             <option value="Online Exam Link">Online Exam Link</option>
             <option value="Important Video">Important Video</option>
             <option value="2026 Unit Test">2026 Unit Test</option>
@@ -201,10 +203,10 @@
           <input id="newResTitle" placeholder="Title (e.g. Sirkali Block Unit Test 1)">
         </div>
         <input id="newResUrl" placeholder="URL (Google Drive link, YouTube link, etc.)">
-        <button class="btn gold" onclick="addResourceAdmin()">Add Resource</button>
+        <button class="btn gold" onclick="addResourceAdmin()">Add Question</button>
       </div>
       <div class="card">
-        <h3>All Resources</h3>
+        <h3>All NMMS Questions</h3>
         <div id="adminResList"></div>
       </div>
     </div>
@@ -327,7 +329,7 @@ async function saveMark(row) {
 function renderResourceList(elId, isAdmin) {
   const el = document.getElementById(elId);
   el.innerHTML = '';
-  if (RESOURCES_CACHE.length === 0) { el.innerHTML = '<p class="muted">No resources added yet.</p>'; return; }
+  if (RESOURCES_CACHE.length === 0) { el.innerHTML = '<p class="muted">No questions added yet.</p>'; return; }
   RESOURCES_CACHE.forEach((r, i) => {
     const div = document.createElement('div');
     div.innerHTML = `<a class="link-item" href="${r.URL}" target="_blank"><strong>${r.Type}:</strong> ${r.Title}</a>`;
