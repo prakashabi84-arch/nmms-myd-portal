@@ -107,7 +107,7 @@
         </div>
         <div style="overflow-x:auto">
           <table id="marksTable">
-            <thead><tr><th>Roll No</th><th>Student Name</th><th>Test</th><th>MAT</th><th>SAT</th><th>Total</th><th></th></tr></thead>
+            <thead><tr><th>Roll No</th><th>Student Name</th><th>Test</th><th>MAT</th><th>SAT</th><th>Total</th><th></th><th></th></tr></thead>
             <tbody id="marksTbody"></tbody>
           </table>
         </div>
@@ -330,21 +330,54 @@ function renderMarksTable() {
         <td><input type="number" value="${r.MAT ?? ''}" id="mat_${r._row}"></td>
         <td><input type="number" value="${r.SAT ?? ''}" id="sat_${r._row}"></td>
         <td id="tot_${r._row}">${r.Total ?? ''}</td>
-        <td><button class="btn small" onclick="saveMark(${r._row})">Save</button><span class="save-msg" id="msg_${r._row}"></span></td>
+        <td></td>
+        <td></td>
       `;
+      // built via closures (not inline onclick strings) so names/roll numbers with
+      // quotes or special characters can't break the HTML
+      const saveTd = tr.children[6];
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn small';
+      saveBtn.textContent = 'Save';
+      saveBtn.onclick = () => saveMark(r._row, r['Roll No'], r.Test);
+      const msg = document.createElement('span');
+      msg.className = 'save-msg';
+      msg.id = 'msg_' + r._row;
+      saveTd.appendChild(saveBtn);
+      saveTd.appendChild(msg);
+
+      const remTd = tr.children[7];
+      const remBtn = document.createElement('button');
+      remBtn.className = 'btn danger small';
+      remBtn.textContent = 'Remove';
+      remBtn.onclick = () => removeStudent(r['Roll No'], r['Student Name']);
+      remTd.appendChild(remBtn);
+
       tbody.appendChild(tr);
     });
 }
 
-async function saveMark(row) {
+async function saveMark(row, rollNo, test) {
   const mat = document.getElementById('mat_' + row).value;
   const sat = document.getElementById('sat_' + row).value;
-  const res = await api('updateMark', { row, mat, sat, editor: SESSION.username });
+  const res = await api('updateMark', { udise: SESSION.udise, rollNo, test, mat, sat, editor: SESSION.username });
   if (res.ok) {
     document.getElementById('tot_' + row).textContent = res.total;
     const msg = document.getElementById('msg_' + row);
     msg.textContent = 'Saved ✓';
     setTimeout(() => msg.textContent = '', 1500);
+  } else {
+    alert(res.error || 'Could not save. Please refresh the page and try again.');
+  }
+}
+
+async function removeStudent(rollNo, name) {
+  if (!confirm(`Remove ${name} (Roll No ${rollNo}) and ALL their test marks from this school's list?\n\nThis cannot be undone.`)) return;
+  const res = await api('deleteStudent', { udise: SESSION.udise, rollNo, editor: SESSION.username });
+  if (res.ok) {
+    await loadTeacher(); // reload the list fresh so row numbers stay correct
+  } else {
+    alert(res.error || 'Could not remove this student. Please refresh and try again.');
   }
 }
 
