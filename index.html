@@ -239,12 +239,21 @@ let RESOURCES_CACHE = [];
 let ANALYSIS_CACHE = null;
 
 async function api(action, payload) {
+  const body = Object.assign({ action }, payload || {});
+  if (SESSION && SESSION.token) body.token = SESSION.token; // proves who is asking; the server checks it on every call
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ action }, payload || {}))
+    body: JSON.stringify(body)
   });
-  return res.json();
+  const data = await res.json();
+  if (data && data.code === 'AUTH' && SESSION) sessionExpired(); // token missing / expired -> back to sign-in
+  return data;
+}
+
+function sessionExpired() {
+  logout();
+  document.getElementById('loginError').textContent = 'Your session has expired. Please sign in again.';
 }
 
 async function doLogin() {
@@ -290,12 +299,14 @@ async function afterLogin() {
 /* ---------- TEACHER ---------- */
 async function loadTeacher() {
   const res = await api('getMarks', { udise: SESSION.udise });
+  if (!SESSION) return; // signed out (session expired) while loading
   MARKS_CACHE = res.rows || [];
   const tests = [...new Set(MARKS_CACHE.map(r => r.Test))];
   const sel = document.getElementById('testFilter');
   sel.innerHTML = '<option value="">All Tests</option>' + tests.map(t => `<option value="${t}">${t}</option>`).join('');
   renderMarksTable();
   const rres = await api('getResources');
+  if (!SESSION) return;
   RESOURCES_CACHE = rres.resources || [];
   renderResourceList('resList', false, r => r.Type !== 'TRUST Questions' && r.Type !== 'TNCMTSE Questions');
   renderResourceList('trustList', false, r => r.Type === 'TRUST Questions');
@@ -418,6 +429,7 @@ async function loadAdmin() {
     api('getAllSchools', {}),
     api('getResources', {})
   ]);
+  if (!SESSION) return; // signed out (session expired) while loading
   window.SCHOOLS_CACHE = sres.schools || [];
   RESOURCES_CACHE = rres.resources || [];
 
@@ -447,6 +459,7 @@ async function loadDashboardForTest(testFilter) {
   renderDashTestTabs();
 
   const ares = await api('getAnalysis', { test: testFilter === 'All' ? '' : testFilter });
+  if (!SESSION || !ares.ok) return; // signed out, or the server refused
   ANALYSIS_CACHE = ares;
 
   const totalStudents = ares.byBlock.reduce((a, b) => a + b.studentsTotal, 0);
@@ -506,6 +519,7 @@ async function loadTopWeak() {
   const test = document.getElementById('topWeakTest').value;
   if (!test) return;
   const res = await api('getTopWeak', { test });
+  if (!SESSION) return;
   const topT = document.getElementById('topTbody');
   const weakT = document.getElementById('weakTbody');
   topT.innerHTML = (res.top || []).map(s => `<tr><td>${s.name}</td><td>${s.school}</td><td>${s.total}</td></tr>`).join('');
